@@ -6,17 +6,18 @@ if(!defined("IN_MYBB"))
 
 // With your other hooks
 $plugins->add_hook('xmlhttp', 'livethreads_xmlhttp');
-$plugins->add_hook('showthread_start','livethreads_js');
+$plugins->add_hook('showthread_start', 'livethreads_showthread_start');
+$plugins->add_hook('misc_start', 'livethreads_misc_start');
 
 function livethreads_info()
 {
 	return array(
 		"name"			=> "Live Threads",
-		"description"	=> "Adds a simple blog to your forum.",
+		"description"	=> "New posts on the last page of the showthread will show up automatically.",
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
-		"version"		=> "0.6",
+		"version"		=> "0.7",
 		"compatibility" => "18*",
 		"codename"		=> "livethreads"
 	);
@@ -25,7 +26,6 @@ function livethreads_info()
 function livethreads_install()
 {
 	global $db;
-	
 
 	// Install settings 
 	// Delete old settings
@@ -76,10 +76,20 @@ function livethreads_install()
 	);
 	$db->insert_query('settings', $setting);
 
+	$setting = array(
+		'name'			=> 'lt_defaultonforums',
+		'title'			=> 'Always Active Forums',
+		'description'	=> 'Forums where all threads are live threads (Can be resource intensive!)',
+		'optionscode'	=> 'forumselect',
+		'value'			=> '',
+		'disporder'		=> 4,
+		'gid'			=> intval($gid),
+	);
+	$db->insert_query('settings', $setting);
+
 	rebuild_settings();
 
 	// Add thread edit
-
 	$db->add_column('threads', 'livethread', 'BOOLEAN NOT NULL DEFAULT FALSE');
 }
 
@@ -99,6 +109,11 @@ function livethreads_activate()
 		'#' . preg_quote('{$headerinclude}') . '#',
 		'{$headerinclude}{$ltjs}'
 	);
+
+	find_replace_templatesets('showthread',
+		'#' . preg_quote('{$threadnotesbox}') . '#',
+		'{$threadnotesbox}{$ltbutton}'
+	);
 }
 
 function livethreads_deactivate()
@@ -106,6 +121,11 @@ function livethreads_deactivate()
 	require_once MYBB_ROOT."/inc/adminfunctions_templates.php";
 	find_replace_templatesets('showthread',
 		'#' . preg_quote('{$ltjs}') . '#',
+		''
+	);
+
+	find_replace_templatesets('showthread',
+		'#' . preg_quote('{$ltbutton}') . '#',
 		''
 	);
 }
@@ -145,7 +165,8 @@ function livethreads_xmlhttp()
 		{
 			// Can the user view this thread?
 			$forumpermissions = forum_permissions($thread['fid']);
-			if($forumpermissions['canview'] == 1 && $forumpermissions['canviewthreads'] == 1 && in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_viewergroups'])) && $thread['livethread'])
+			check_forum_password($thread['fid']);
+			if($forumpermissions['canview'] == 1 && $forumpermissions['canviewthreads'] == 1 && in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_viewergroups'])) && ($thread['livethread'] || in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums']))))
 			{
 				if(is_moderator($fid))
 				{
@@ -215,68 +236,194 @@ function livethreads_xmlhttp()
 	}
 }
 
-function livethreads_js()
+function livethreads_showthread_start()
 {
-	global $ltjs, $tid, $thread, $mybb;
+	global $ltjs, $ltbutton, $tid, $thread, $mybb;
 	$thread = get_thread($tid);
-	if(in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_viewergroups'])) && $thread['livethread'])
-	{
-		$ltjs = '
-	<script type="text/javascript">
-		// Live Threads
-		$( document ).ready(function() {
-			var timestamp = '.TIME_NOW.';
-			var lastpid = $(\'#lastpid\');
-			var lastpid = lastpid.val();
-			// We only want to livethread on the last page
-			if($(\'#post_\'+lastpid).length != 0)
-			{
-				var refreshId = setInterval(function()
-				{
-					$.get(\'xmlhttp.php?action=livethread&tid='.$tid.'&timestamp=\'+timestamp,
-						function(result) {
-						status = JSON.stringify(result.status)
-						if(status == \'200\')
-						{
-							var posts = $.parseJSON(JSON.stringify(result.posts))
-							var myposts = $.parseJSON(posts)
-							$.each( myposts, function( index, post ){
-								post = atob(post);
-								if(post.match(/id="post_([0-9]+)"/))
-								{
-									var pid = post.match(/id="post_([0-9]+)"/)[1];
-								}
 
-								if($(\'#post_\'+pid).length == 0)
-								{
-									$(\'#posts\').append(\'<span style="" class="liveposts[]">\'+post+\'</span>\');
-									$(".liveposts").last().fadeIn(\'slow\');
-								}
-							});
-						} else {
-							// Not 200, not ok, see what\'s up
-							if(status == \'403\')
-							{
-								// Forbidden?
-								if(JSON.stringify(result.livethread) == 0)
-								{
-									// Not a live thread!
-									$.jGrowl(\'You do not have permission to view this as a Live Thread\');
-								} else {
-									// You can\'t view the thread in general.
-									$.jGrowl(\'You do not have permission to view this thread\');
-								}
-							} else if (status == \'404\') {
-								// Thread non existent!
-								$.jGrowl(\'Thread not found!\');
-							}
-						}
-					});
-					timestamp = Math.round(+new Date()/1000);
-				}, '.intval($mybb->settings['lt_refreshrate']).');
+	$ltbutton = '';
+	$postkey = generate_post_check();
+
+	// Options for those who can change live thread status
+	if(in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_creategroups'])))
+	{
+		// Is the thread automatically live due to forum settings?
+		if(!in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])))
+		{
+			// Nope, so we can edit settings.
+			if($thread['livethread'])
+			{
+				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_deactivate&tid={$tid}&my_post_key={$postkey}\"><span>Deactivate Live Thread</span></a></div><br />";
+			} else {
+				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_activate&tid={$tid}&my_post_key={$postkey}\"><span>Activate Live Thread</span></a></div><br />";		
 			}
-		});
-	</script>';
+		} else {
+			// Yes, the moderator can't do anything.
+			$ltbutton .= "<div class=\"pagination\"><a>This thread is automatically live via forum settings</a></div><br />";	
+		}
+	}
+
+	// Javascript
+	if(in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_viewergroups'])) && ($thread['livethread'] || in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums']))))
+	{
+		// Options for those who can view live threads
+		if(in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_viewergroups'])))
+		{
+			// Is the live thread enabled?
+			if(isset($mybb->cookies['lt_ignored']) && in_array($tid, explode(',', $mybb->cookies['lt_ignored'])))
+			{
+				// It's not enabled, show the enable button
+				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_enable&tid={$tid}&my_post_key={$postkey}\"><span>Enable Live Thread Updates</span></a></div><br />";	
+			} else {
+				// Enabled, show the disable button
+				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_disable&tid={$tid}&my_post_key={$postkey}\"><span>Disable Live Thread Updates</span></a></div><br />";	
+			}
+		}
+
+		// If they don't want to ignore the live thread...
+		if(!isset($mybb->cookies['lt_ignored']) || !in_array($tid, explode(',', $mybb->cookies['lt_ignored'])))
+		{
+			$ltjs = '
+		<script type="text/javascript">
+			// Live Threads
+			$( document ).ready(function() {
+				var timestamp = '.TIME_NOW.';
+				var lastpid = $(\'#lastpid\');
+				var lastpid = lastpid.val();
+				// We only want to livethread on the last page
+				if($(\'#post_\'+lastpid).length != 0)
+				{
+					var refreshId = setInterval(function()
+					{
+						$.get(\'xmlhttp.php?action=livethread&tid='.$tid.'&timestamp=\'+timestamp,
+							function(result) {
+							status = JSON.stringify(result.status)
+							if(status == \'200\')
+							{
+								var posts = $.parseJSON(JSON.stringify(result.posts))
+								var myposts = $.parseJSON(posts)
+								$.each( myposts, function( index, post ){
+									post = atob(post);
+									if(post.match(/id="post_([0-9]+)"/))
+									{
+										var pid = post.match(/id="post_([0-9]+)"/)[1];
+									}
+
+									if($(\'#post_\'+pid).length == 0)
+									{
+										$(\'#posts\').append(\'<span style="" class="liveposts[]">\'+post+\'</span>\');
+										$(".liveposts").last().fadeIn(\'slow\');
+									}
+								});
+							} else {
+								// Not 200, not ok, see what\'s up
+								if(status == \'403\')
+								{
+									// Forbidden?
+									if(JSON.stringify(result.livethread) == 0)
+									{
+										// Not a live thread!
+										$.jGrowl(\'You do not have permission to view this as a Live Thread\');
+									} else {
+										// You can\'t view the thread in general.
+										$.jGrowl(\'You do not have permission to view this thread\');
+									}
+								} else if (status == \'404\') {
+									// Thread non existent!
+									$.jGrowl(\'Thread not found!\');
+								}
+							}
+						});
+						timestamp = Math.round(+new Date()/1000);
+					}, '.intval($mybb->settings['lt_refreshrate']).');
+				}
+			});
+		</script>';
+		}
+	}
+}
+
+function livethreads_misc_start()
+{
+	global $mybb, $db;
+	if($mybb->get_input('action') == 'livethread_deactivate')
+	{
+		// Moderator/etc is deactivating a live thread
+		// Check for CSRF
+		verify_post_check($mybb->get_input('my_post_key'));
+		// Get TID
+		$tid = $mybb->get_input('tid', MyBB::INPUT_INT);
+		// Check to make sure the user can update thread statuses
+		if(in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_creategroups'])))
+		{
+			// Disable the thread
+			$update['livethread'] = '0';
+			$db->update_query('threads',$update,"tid='{$tid}'");
+			// And send them back
+			redirect(get_thread_link($tid, 0, "lastpost"));
+		} else {
+			// https://www.youtube.com/watch?v=usQ8AhiRcNE
+			error_no_permission();
+		}
+	} elseif($mybb->get_input('action') == 'livethread_activate')
+	{
+		// We're making a thread live!
+		// CSRF protection
+		verify_post_check($mybb->get_input('my_post_key'));
+		// Grab the TID by the horns
+		$tid = $mybb->get_input('tid', MyBB::INPUT_INT);
+		// Can this guy even do this?  What are his qualifications?
+		if(in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_creategroups'])))
+		{
+			// Apply defibrillator and make the thread live!
+			$update['livethread'] = '1';
+			$db->update_query('threads',$update,"tid='{$tid}'");
+			redirect(get_thread_link($tid, 0, "lastpost"));
+		} else {
+			// Oops.  You aren't a doctor.  You can't make things live.
+			error_no_permission();
+		}
+	} elseif($mybb->get_input('action') == 'livethread_disable') {
+		// Check for Cross Site Request Forgers
+		verify_post_check($mybb->get_input('my_post_key'));
+		// Either they didn't forge or are good at it.  Moving on...
+		$tid = $mybb->get_input('tid', MyBB::INPUT_INT);
+		// Do they even ignore anything?
+		if(isset($mybb->cookies['lt_ignored']))
+		{
+			// Ignore the thread and break its heart
+			$new_ignored = explode(',', $mybb->cookies['lt_ignored']);
+			$new_ignored[] = $tid;
+			$mybb->cookies['lt_ignored'] = implode(',', $new_ignored);
+			my_setcookie("lt_ignored", $mybb->cookies['lt_ignored']);
+		} else {
+			// See previous comment
+			my_setcookie("lt_ignored", $tid);
+		}
+		// Return them to the depths from whence they came
+		redirect(get_thread_link($tid, 0, "lastpost"));
+	} elseif($mybb->get_input('action') == 'livethread_enable') {
+		// Again checking for forgeries
+		verify_post_check($mybb->get_input('my_post_key'));
+		$tid = $mybb->get_input('tid', MyBB::INPUT_INT);
+		// Are they ignoring anthing?
+		if(isset($mybb->cookies['lt_ignored']))
+		{
+			// Bring the live thread to light!
+			$new_ignored = explode(',', $mybb->cookies['lt_ignored']);
+			// Look for the tid in the ignored threads
+			$key = array_search($tid, $new_ignored);
+			if($key !== false)
+			{
+				// If it's in there, get rid of it
+				unset($new_ignored[$key]);
+			}
+			// Update ignored threads
+			$mybb->cookies['lt_ignored'] = implode(',', $new_ignored);
+			my_setcookie("lt_ignored", $mybb->cookies['lt_ignored']);
+			// Let's blow this thing and go home!
+			redirect(get_thread_link($tid, 0, "lastpost"));
+		}
 	}
 }
 
