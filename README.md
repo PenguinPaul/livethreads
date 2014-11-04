@@ -22,6 +22,8 @@ Live Threads for MyBB.  New posts on the last page will show up automatically.
 
 -Added the ability for users to enable/disable live thread functionality locally.
 
+-Plugin can now eat chocolate
+
 #### Version 0.6
 -Added attachment support
 
