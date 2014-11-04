@@ -16,7 +16,7 @@ function livethreads_info()
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
-		"version"		=> "0.5",
+		"version"		=> "0.6",
 		"compatibility" => "18*",
 		"codename"		=> "livethreads"
 	);
@@ -99,11 +99,6 @@ function livethreads_activate()
 		'#' . preg_quote('{$headerinclude}') . '#',
 		'{$headerinclude}{$ltjs}'
 	);
-	
-	find_replace_templatesets('showthread',
-		'#' . preg_quote('{$posts}') . '#',
-		'{$posts}<div id="autorefresh"></div>'
-	);	
 }
 
 function livethreads_deactivate()
@@ -111,10 +106,6 @@ function livethreads_deactivate()
 	require_once MYBB_ROOT."/inc/adminfunctions_templates.php";
 	find_replace_templatesets('showthread',
 		'#' . preg_quote('{$ltjs}') . '#',
-		''
-	);
-	find_replace_templatesets('showthread',
-		'#' . preg_quote('<div id="autorefresh"></div>') . '#',
 		''
 	);
 }
@@ -134,7 +125,7 @@ function livethreads_uninstall()
 // In the body of your plugin
 function livethreads_xmlhttp()
 {
-	global $mybb, $charset, $db, $altbg, $postcounter;
+	global $mybb, $charset, $db, $altbg, $postcounter, $attachcache;
 
 	if($mybb->get_input('action') == 'livethread')
 	{
@@ -148,12 +139,7 @@ function livethreads_xmlhttp()
 			// No time set, so default to right now.
 			$timestamp = TIME_NOW;
 		}
-		// Get the altbg of the last post
-		$altbg = $mybb->get_input('altbg');
-		if($altbg != 'trow2')
-		{
-			$altbg = 'trow1';
-		}
+
 		// Does the thread exist?
 		if($thread)
 		{
@@ -161,31 +147,24 @@ function livethreads_xmlhttp()
 			$forumpermissions = forum_permissions($thread['fid']);
 			if($forumpermissions['canview'] == 1 && $forumpermissions['canviewthreads'] == 1 && in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_viewergroups'])) && $thread['livethread'])
 			{
-
 				if(is_moderator($fid))
 				{
 					$ismod = true;
-				}
-				else
-				{
+				} else {
 					$ismod = false;
 				}
 
 				if($ismod == true)
 				{
 					$postcounter = $thread['replies'] + $thread['unapprovedposts'];
-				}
-				else
-				{
+				} else {
 					$postcounter = $thread['replies'];
 				}
 
 				if(($postcounter - $mybb->settings['postsperpage']) % 2 != 0)
 				{
 					$altbg = "trow1";
-				}
-				else
-				{
+				} else {
 					$altbg = "trow2";
 				}
 
@@ -207,23 +186,29 @@ function livethreads_xmlhttp()
 
 				while($post = $db->fetch_array($query))
 				{
+					// Attachments
+					$attachments = $db->simple_select("attachments", "*", "pid='{$post['pid']}'");
+					while($attachment = $db->fetch_array($attachments))
+					{
+						$attachcache[$attachment['pid']][$attachment['aid']] = $attachment;
+					}
 					// Loop through, and encode so no json errors
 					$posts[] = base64_encode(build_postbit($post));
 				}
 
 				$postsjson = json_encode($posts);
-				$data = array('error' => '200', 'posts' => $postsjson);
+				$data = array('status' => 200, 'posts' => $postsjson);
 				echo json_encode($data);
 				exit;
 			} else {
 				// You don't have permission to view that that thread!
-				$data = array('error' => '403', 'livethread' => $thread['livethread']);
+				$data = array('status' => 403, 'livethread' => $thread['livethread']);
 				echo json_encode($data);
 				exit;
 			}
 		} else {
 			// 404, thread not found!
-			$data = array('error' => '404');
+			$data = array('status' => 404);
 			echo json_encode($data);
 			exit;
 		}
@@ -232,36 +217,67 @@ function livethreads_xmlhttp()
 
 function livethreads_js()
 {
-	global $ltjs, $tid, $mybb;
-
-	$ltjs = '<script type="text/javascript">
-	var timestamp = '.TIME_NOW.';
-
-	var refreshId = setInterval(function()
+	global $ltjs, $tid, $thread, $mybb;
+	$thread = get_thread($tid);
+	if(in_array($mybb->user['usergroup'], explode(',', $mybb->settings['lt_viewergroups'])) && $thread['livethread'])
 	{
-		$.get(\'xmlhttp.php?action=livethread&tid='.$tid.'&timestamp=\'+timestamp,
-		function(result) {
-			var posts = $.parseJSON(JSON.stringify(result.posts))
-			var myposts = $.parseJSON(posts)
-			$.each( myposts, function( index, post ){
-				post = atob(post)
-				if(post.match(/id="post_([0-9]+)"/))
+		$ltjs = '
+	<script type="text/javascript">
+		// Live Threads
+		$( document ).ready(function() {
+			var timestamp = '.TIME_NOW.';
+			var lastpid = $(\'#lastpid\');
+			var lastpid = lastpid.val();
+			// We only want to livethread on the last page
+			if($(\'#post_\'+lastpid).length != 0)
+			{
+				var refreshId = setInterval(function()
 				{
-					var pid = post.match(/id="post_([0-9]+)"/)[1];
-				}
+					$.get(\'xmlhttp.php?action=livethread&tid='.$tid.'&timestamp=\'+timestamp,
+						function(result) {
+						status = JSON.stringify(result.status)
+						if(status == \'200\')
+						{
+							var posts = $.parseJSON(JSON.stringify(result.posts))
+							var myposts = $.parseJSON(posts)
+							$.each( myposts, function( index, post ){
+								post = atob(post);
+								if(post.match(/id="post_([0-9]+)"/))
+								{
+									var pid = post.match(/id="post_([0-9]+)"/)[1];
+								}
 
-				if($(\'#post_\'+pid).length == 0)
-				{
-					$(\'#posts\').append(\'<span style="" class="liveposts[]">\'+post+\'</span>\');
-					$(".liveposts").last().fadeIn(\'slow\');
-				} else {
-					console.log(\'Ignored post!\');
-				}
-			});
+								if($(\'#post_\'+pid).length == 0)
+								{
+									$(\'#posts\').append(\'<span style="" class="liveposts[]">\'+post+\'</span>\');
+									$(".liveposts").last().fadeIn(\'slow\');
+								}
+							});
+						} else {
+							// Not 200, not ok, see what\'s up
+							if(status == \'403\')
+							{
+								// Forbidden?
+								if(JSON.stringify(result.livethread) == 0)
+								{
+									// Not a live thread!
+									$.jGrowl(\'You do not have permission to view this as a Live Thread\');
+								} else {
+									// You can\'t view the thread in general.
+									$.jGrowl(\'You do not have permission to view this thread\');
+								}
+							} else if (status == \'404\') {
+								// Thread non existent!
+								$.jGrowl(\'Thread not found!\');
+							}
+						}
+					});
+					timestamp = Math.round(+new Date()/1000);
+				}, '.intval($mybb->settings['lt_refreshrate']).');
+			}
 		});
-		timestamp = Math.round(+new Date()/1000);
-	}, '.intval($mybb->settings['lt_refreshrate']).');
 	</script>';
+	}
 }
 
-//$
+?>
