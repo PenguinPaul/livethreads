@@ -44,7 +44,7 @@ function livethreads_info()
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
-		"version"		=> "0.8.3",
+		"version"		=> "0.8.4",
 		"compatibility" => "18*",
 		"codename"		=> "livethreads"
 	);
@@ -193,7 +193,7 @@ function livethreads_xmlhttp()
 			// Can the user view this thread?
 			$forumpermissions = forum_permissions($thread['fid']);
 			check_forum_password($thread['fid']);
-			if($forumpermissions['canview'] == 1 && $forumpermissions['canviewthreads'] == 1 && is_member($mybb->settings['lt_viewergroups']) && ($thread['livethread'] || (in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) || $mybb->settings['lt_defaultonforums'] == '-1')))
+			if($forumpermissions['canview'] == 1 && $forumpermissions['canviewthreads'] == 1 && (is_member($mybb->settings['lt_viewergroups']) || $mybb->settings['lt_viewergroups'] == '-1') && ($thread['livethread'] || (in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) || $mybb->settings['lt_defaultonforums'] == '-1')))
 			{
 				if(is_moderator($fid))
 				{
@@ -274,7 +274,7 @@ function livethreads_showthread_start()
 	$postkey = generate_post_check();
 
 	// Options for those who can change live thread status
-	if(is_member($mybb->settings['lt_creategroups']))
+	if(is_member($mybb->settings['lt_creategroups']) || $mybb->settings['lt_creategroups'] == '-1')
 	{
 		// Is the thread automatically live due to forum settings?
 		if(!in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) && $mybb->settings['lt_defaultonforums'] != '-1')
@@ -293,10 +293,10 @@ function livethreads_showthread_start()
 	}
 
 	// Javascript
-	if(is_member($mybb->settings['lt_viewergroups']) && ($thread['livethread'] || (in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) || $mybb->settings['lt_defaultonforums'] == '-1')))
+	if((is_member($mybb->settings['lt_viewergroups']) || $mybb->settings['lt_viewergroups'] == '-1') && ($thread['livethread'] || (in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) || $mybb->settings['lt_defaultonforums'] == '-1')))
 	{
 		// Options for those who can view live threads
-		if(is_member($mybb->settings['lt_viewergroups']))
+		if(is_member($mybb->settings['lt_viewergroups']) || $mybb->settings['lt_viewergroups'] == '-1')
 		{
 			// Is the live thread enabled?
 			if(isset($mybb->cookies['lt_ignored']) && in_array($tid, explode(',', $mybb->cookies['lt_ignored'])))
@@ -385,7 +385,7 @@ function livethreads_misc_start()
 		// Get TID
 		$tid = $mybb->get_input('tid', MyBB::INPUT_INT);
 		// Check to make sure the user can update thread statuses
-		if(is_member($mybb->settings['lt_creategroups']))
+		if(is_member($mybb->settings['lt_creategroups']) || $mybb->settings['lt_creategroups'] == '-1')
 		{
 			// Disable the thread
 			$update['livethread'] = '0';
@@ -404,7 +404,7 @@ function livethreads_misc_start()
 		// Grab the TID by the horns
 		$tid = $mybb->get_input('tid', MyBB::INPUT_INT);
 		// Can this guy even do this?  What are his qualifications?
-		if(is_member($mybb->settings['lt_creategroups']))
+		if(is_member($mybb->settings['lt_creategroups']) || $mybb->settings['lt_creategroups'] == '-1')
 		{
 			// Apply defibrillator and make the thread live!
 			$update['livethread'] = '1';
