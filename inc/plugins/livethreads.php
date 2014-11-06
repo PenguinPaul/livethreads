@@ -44,7 +44,7 @@ function livethreads_info()
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
-		"version"		=> "0.8.1",
+		"version"		=> "0.8.2",
 		"compatibility" => "18*",
 		"codename"		=> "livethreads"
 	);
@@ -193,7 +193,7 @@ function livethreads_xmlhttp()
 			// Can the user view this thread?
 			$forumpermissions = forum_permissions($thread['fid']);
 			check_forum_password($thread['fid']);
-			if($forumpermissions['canview'] == 1 && $forumpermissions['canviewthreads'] == 1 && is_member($mybb->settings['lt_viewergroups']) && ($thread['livethread'] || in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums']))))
+			if($forumpermissions['canview'] == 1 && $forumpermissions['canviewthreads'] == 1 && is_member($mybb->settings['lt_viewergroups']) && ($thread['livethread'] || (in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) || $mybb->settings['lt_defaultonforums'] == '-1')))
 			{
 				if(is_moderator($fid))
 				{
@@ -277,7 +277,7 @@ function livethreads_showthread_start()
 	if(is_member($mybb->settings['lt_creategroups']))
 	{
 		// Is the thread automatically live due to forum settings?
-		if(!in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])))
+		if(!in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) && $mybb->settings['lt_defaultonforums'] != '-1')
 		{
 			// Nope, so we can edit settings.
 			if($thread['livethread'])
@@ -293,7 +293,7 @@ function livethreads_showthread_start()
 	}
 
 	// Javascript
-	if(is_member($mybb->settings['lt_viewergroups']) && ($thread['livethread'] || in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums']))))
+	if(is_member($mybb->settings['lt_viewergroups']) && ($thread['livethread'] || (in_array($thread['fid'], explode(',', $mybb->settings['lt_defaultonforums'])) || $mybb->settings['lt_defaultonforums'] == '-1')))
 	{
 		// Options for those who can view live threads
 		if(is_member($mybb->settings['lt_viewergroups']))
