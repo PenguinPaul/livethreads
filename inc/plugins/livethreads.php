@@ -44,7 +44,7 @@ function livethreads_info()
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
-		"version"		=> "0.8",
+		"version"		=> "0.8.1",
 		"compatibility" => "18*",
 		"codename"		=> "livethreads"
 	);
@@ -172,9 +172,7 @@ function livethreads_uninstall()
 // In the body of your plugin
 function livethreads_xmlhttp()
 {
-	global $mybb, $charset, $db, $altbg, $postcounter, $attachcache, $lang;
-
-	$lang->load('livethreads');
+	global $mybb, $charset, $db, $altbg, $postcounter, $attachcache;
 
 	if($mybb->get_input('action') == 'livethread')
 	{
@@ -267,8 +265,10 @@ function livethreads_xmlhttp()
 
 function livethreads_showthread_start()
 {
-	global $ltjs, $ltbutton, $tid, $thread, $mybb;
+	global $ltjs, $ltbutton, $tid, $thread, $mybb, $lang;
 	$thread = get_thread($tid);
+
+	$lang->load('livethreads');
 
 	$ltbutton = '';
 	$postkey = generate_post_check();
@@ -282,13 +282,13 @@ function livethreads_showthread_start()
 			// Nope, so we can edit settings.
 			if($thread['livethread'])
 			{
-				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_deactivate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>{$lang->lt_deactivate}</span></a></div><br />";
+				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_deactivate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>{$lang->lt_deactivate}</span></a></div><br />";
 			} else {
-				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_activate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>{$lang->lt_activate}</span></a></div><br />";		
+				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_activate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>{$lang->lt_activate}</span></a></div><br />";		
 			}
 		} else {
 			// Yes, the moderator can't do anything.
-			$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"javascript:$.jGrowl('This thread is live via forum settings and cannot be disabled.');\" class=\"postbit_warn\"><span>Live via Forum Settings</span></a></div><br />";	
+			$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"javascript:$.jGrowl('This thread is live via forum settings and cannot be disabled.');\" class=\"postbit_warn\"><span>{$lang->lt_forumset}</span></a></div><br />";	
 		}
 	}
 
@@ -305,7 +305,7 @@ function livethreads_showthread_start()
 				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_enable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>{$lang->lt_enable}</span></a></div><br />";	
 			} else {
 				// Enabled, show the disable button
-				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_disable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>{$lang->lt_disnable}</span></a></div><br />";	
+				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_disable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>{$lang->lt_disable}</span></a></div><br />";	
 			}
 		}
 
