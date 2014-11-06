@@ -253,13 +253,13 @@ function livethreads_showthread_start()
 			// Nope, so we can edit settings.
 			if($thread['livethread'])
 			{
-				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_deactivate&tid={$tid}&my_post_key={$postkey}\"><span>Deactivate Live Thread</span></a></div><br />";
+				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_deactivate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>Deactivate Live Thread</span></a></div><br />";
 			} else {
-				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_activate&tid={$tid}&my_post_key={$postkey}\"><span>Activate Live Thread</span></a></div><br />";		
+				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_activate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>Activate Live Thread</span></a></div><br />";		
 			}
 		} else {
 			// Yes, the moderator can't do anything.
-			$ltbutton .= "<div class=\"pagination\"><a>This thread is automatically live via forum settings</a></div><br />";	
+			$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"javascript:$.jGrowl('This thread is live via forum settings and cannot be disabled.');\" class=\"postbit_warn\"><span>Live via Forum Settings</span></a></div><br />";	
 		}
 	}
 
@@ -273,10 +273,10 @@ function livethreads_showthread_start()
 			if(isset($mybb->cookies['lt_ignored']) && in_array($tid, explode(',', $mybb->cookies['lt_ignored'])))
 			{
 				// It's not enabled, show the enable button
-				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_enable&tid={$tid}&my_post_key={$postkey}\"><span>Enable Live Thread Updates</span></a></div><br />";	
+				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_enable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>Enable Live Thread Updates</span></a></div><br />";	
 			} else {
 				// Enabled, show the disable button
-				$ltbutton .= "<div class=\"pagination\"><a href=\"misc.php?action=livethread_disable&tid={$tid}&my_post_key={$postkey}\"><span>Disable Live Thread Updates</span></a></div><br />";	
+				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_disable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>Disable Live Thread Updates</span></a></div><br />";	
 			}
 		}
 
@@ -307,12 +307,17 @@ function livethreads_showthread_start()
 									if(post.match(/id="post_([0-9]+)"/))
 									{
 										var pid = post.match(/id="post_([0-9]+)"/)[1];
+										// Make sure the quickreply doesn\'t break things
+										var lastpid = $(\'#lastpid\');
+										if(lastpid)
+										{
+											lastpid.val(pid);
+										}
 									}
 
 									if($(\'#post_\'+pid).length == 0)
 									{
-										$(\'#posts\').append(\'<span style="" class="liveposts[]">\'+post+\'</span>\');
-										$(".liveposts").last().fadeIn(\'slow\');
+										$(\'#posts\').append(post);
 									}
 								});
 							} else {
