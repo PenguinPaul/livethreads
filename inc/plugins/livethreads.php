@@ -44,7 +44,7 @@ function livethreads_info()
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
-		"version"		=> "0.8.2",
+		"version"		=> "0.8.3",
 		"compatibility" => "18*",
 		"codename"		=> "livethreads"
 	);
@@ -313,7 +313,7 @@ function livethreads_showthread_start()
 		if(!isset($mybb->cookies['lt_ignored']) || !in_array($tid, explode(',', $mybb->cookies['lt_ignored'])))
 		{
 			$ltjs = '
-		<script type="text/javascript">
+			<script type="text/javascript">
 			// Live Threads
 			$( document ).ready(function() {
 				var timestamp = '.TIME_NOW.';
@@ -346,7 +346,12 @@ function livethreads_showthread_start()
 
 									if($(\'#post_\'+pid).length == 0)
 									{
-										$(\'#posts\').append(post);
+										$(\'#posts\').append(\'<span class="livepost" style="display:none;">\'+post+\'</span>\');
+										if($("span.livepost").is(":hidden"))
+										{
+										    $("span.livepost").fadeIn();
+										}
+										$(\'html, body\').animate({scrollTop: $(\'#post_\'+pid).offset().top}, 1000);
 									}
 								});
 							} else {
