@@ -30,8 +30,8 @@ $l['lt_activate'] = 'Activate Live Thread';
 $l['lt_enable'] = 'Enable Live Thread Updates';
 $l['lt_deactivate'] = 'Deactivate Live Thread';
 $l['lt_disable'] = 'Disable Live Thread Updates';
-$l['lt_noperm'] = 'You do not have permission to view this thread';
+$l['lt_forumset'] = 'Live via Forum Settings';
 $l['lt_nopermlive'] = 'You do not have permission to view this as a Live Thread';
-$l['lt_nbtfound'] = 'Thread does not exist';
+$l['lt_notfound'] = 'Thread does not exist';
 
 ?>
