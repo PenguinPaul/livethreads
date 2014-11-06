@@ -353,15 +353,7 @@ function livethreads_showthread_start()
 								// Not 200, not ok, see what\'s up
 								if(status == \'403\')
 								{
-									// Forbidden?
-									if(JSON.stringify(result.livethread) == 0)
-									{
-										// Not a live thread!
-										$.jGrowl(\''.$lang->lt_nopermlive.'\');
-									} else {
-										// You can\'t view the thread in general.
-										$.jGrowl(\''.$lang->lt_noperm.'\');
-									}
+									$.jGrowl(\''.$lang->lt_nopermlive.'\');
 								} else if (status == \'404\') {
 									// Thread non existent!
 									$.jGrowl(\''.$lang->lt_notfound.'\');
@@ -388,7 +380,7 @@ function livethreads_misc_start()
 		// Get TID
 		$tid = $mybb->get_input('tid', MyBB::INPUT_INT);
 		// Check to make sure the user can update thread statuses
-		if(is_member(',', $mybb->settings['lt_creategroups']))
+		if(is_member($mybb->settings['lt_creategroups']))
 		{
 			// Disable the thread
 			$update['livethread'] = '0';
