@@ -12,6 +12,16 @@ Live Threads for MyBB.  New posts on the last page will show up automatically.
 
 ### Changelog
 
+#### Version 0.8
+
+-Added language support
+
+-Added proper usergroup checking
+
+-Changed button style
+
+-Fixed bug with quickreply
+
 #### Version 0.7
 
 -Added checking for the forum password
