@@ -1,4 +1,31 @@
 <?php
+
+/*
+	Live Threads
+
+	Copyright (c) 2014 Paul Hedman
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+
+	(MIT License)
+*/
+
 if(!defined("IN_MYBB"))
 {
 	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
@@ -145,7 +172,9 @@ function livethreads_uninstall()
 // In the body of your plugin
 function livethreads_xmlhttp()
 {
-	global $mybb, $charset, $db, $altbg, $postcounter, $attachcache;
+	global $mybb, $charset, $db, $altbg, $postcounter, $attachcache, $lang;
+
+	$lang->load('livethreads');
 
 	if($mybb->get_input('action') == 'livethread')
 	{
@@ -253,9 +282,9 @@ function livethreads_showthread_start()
 			// Nope, so we can edit settings.
 			if($thread['livethread'])
 			{
-				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_deactivate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>Deactivate Live Thread</span></a></div><br />";
+				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_deactivate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>{$lang->lt_deactivate}</span></a></div><br />";
 			} else {
-				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_activate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>Activate Live Thread</span></a></div><br />";		
+				$ltbutton .= "<div class=\"postbit_buttons postbit_edit\"><a href=\"misc.php?action=livethread_activate&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>{$lang->lt_activate}</span></a></div><br />";		
 			}
 		} else {
 			// Yes, the moderator can't do anything.
@@ -273,10 +302,10 @@ function livethreads_showthread_start()
 			if(isset($mybb->cookies['lt_ignored']) && in_array($tid, explode(',', $mybb->cookies['lt_ignored'])))
 			{
 				// It's not enabled, show the enable button
-				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_enable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>Enable Live Thread Updates</span></a></div><br />";	
+				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_enable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qrestore\"><span>{$lang->lt_enable}</span></a></div><br />";	
 			} else {
 				// Enabled, show the disable button
-				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_disable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>Disable Live Thread Updates</span></a></div><br />";	
+				$ltbutton .= "<div class=\"postbit_buttons\"><a href=\"misc.php?action=livethread_disable&tid={$tid}&my_post_key={$postkey}\" class=\"postbit_qdelete\"><span>{$lang->lt_disnable}</span></a></div><br />";	
 			}
 		}
 
@@ -328,14 +357,14 @@ function livethreads_showthread_start()
 									if(JSON.stringify(result.livethread) == 0)
 									{
 										// Not a live thread!
-										$.jGrowl(\'You do not have permission to view this as a Live Thread\');
+										$.jGrowl(\''.$lang->lt_nopermlive'\');
 									} else {
 										// You can\'t view the thread in general.
-										$.jGrowl(\'You do not have permission to view this thread\');
+										$.jGrowl(\''.$lang->lt_noperm.'\');
 									}
 								} else if (status == \'404\') {
 									// Thread non existent!
-									$.jGrowl(\'Thread not found!\');
+									$.jGrowl(\''.$lang->lt_notfound.'\');
 								}
 							}
 						});
