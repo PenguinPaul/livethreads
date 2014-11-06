@@ -44,7 +44,7 @@ function livethreads_info()
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
-		"version"		=> "0.7",
+		"version"		=> "0.8",
 		"compatibility" => "18*",
 		"codename"		=> "livethreads"
 	);
