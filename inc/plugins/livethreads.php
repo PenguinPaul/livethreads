@@ -40,7 +40,7 @@ function livethreads_info()
 {
 	return array(
 		"name"			=> "Live Threads",
-		"description"	=> "New posts on the last page of the showthread will show up automatically.",
+		"description"	=> "New posts on the last page of the showthread will show up automatically via AJAX.",
 		"website"		=> "https://github.com/PenguinPaul/livethreads",
 		"author"		=> "Paul Hedman",
 		"authorsite"	=> "http://www.paulhedman.com",
@@ -357,7 +357,7 @@ function livethreads_showthread_start()
 									if(JSON.stringify(result.livethread) == 0)
 									{
 										// Not a live thread!
-										$.jGrowl(\''.$lang->lt_nopermlive'\');
+										$.jGrowl(\''.$lang->lt_nopermlive.'\');
 									} else {
 										// You can\'t view the thread in general.
 										$.jGrowl(\''.$lang->lt_noperm.'\');
